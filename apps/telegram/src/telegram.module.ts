@@ -1,11 +1,16 @@
 import { Module } from '@nestjs/common';
+import { TelegrafModule } from 'nestjs-telegraf';
 import { CoreModule } from '@app/core';
-import { TelegramController } from './telegram.controller';
-import { TelegramService } from './telegram.service';
+import { BotModule } from './bot/bot.module';
 
 @Module({
-  imports: [CoreModule],
-  controllers: [TelegramController],
-  providers: [TelegramService],
+  imports: [
+    CoreModule,
+    TelegrafModule.forRoot({
+      token: process.env.TELEGRAM_BOT_TOKEN,
+      include: [BotModule],
+    }),
+    BotModule,
+  ],
 })
 export class TelegramModule {}
