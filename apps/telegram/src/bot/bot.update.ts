@@ -2,6 +2,7 @@ import { Help, InjectBot, On, Message, Start, Update } from 'nestjs-telegraf';
 import { Telegraf } from 'telegraf';
 import { BotService } from './bot.service';
 import { Context } from '../interfaces/context.interface';
+import { YoutubeService } from '@app/youtube';
 
 @Update()
 export class BotUpdate {
@@ -9,6 +10,7 @@ export class BotUpdate {
     @InjectBot()
     private readonly bot: Telegraf<Context>,
     private readonly botService: BotService,
+    private readonly youtubeService: YoutubeService,
   ) {}
 
   @Start()
@@ -23,7 +25,9 @@ export class BotUpdate {
   }
 
   @On('text')
-  onMessage(@Message('text') text: string): string {
-    return 'Text';
+  async onMessage(@Message('text') text: string): Promise<string> {
+    const videoId = await this.youtubeService.downloadAudio(text);
+    console.log('Here', videoId);
+    return videoId;
   }
 }

@@ -23,6 +23,12 @@
       ],
       "@app/core/*": [
         "libs/core/src/*"
+      ],
+      "@app/youtube": [
+        "libs/youtube/src"
+      ],
+      "@app/youtube/*": [
+        "libs/youtube/src/*"
       ]
     }
   }
