@@ -38,11 +38,11 @@ export class BotUpdate {
     @Message('text') text: string,
     @Ctx() ctx: Context,
   ): Promise<string> {
-    const videoPath = await this.youtubeService.downloadAudio(text);
+    const videoData = await this.youtubeService.downloadAudio(text);
     await ctx.replyWithAudio({
-      source: fs.readFileSync(videoPath),
+      source: fs.readFileSync(videoData.pathTo),
     });
-    console.log('Here', videoPath);
-    return videoPath;
+    console.log('Here', videoData);
+    return 'Completed';
   }
 }

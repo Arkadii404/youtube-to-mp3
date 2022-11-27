@@ -1,26 +1,37 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import * as ytdl from 'ytdl-core';
 import { mkdir } from 'fs/promises';
 import * as fs from 'fs';
 import * as path from 'path';
-import { BadRequestException } from '@nestjs/common';
+import { YoutubeAudio } from './interfaces';
 
 @Injectable()
 export class YoutubeService {
-  public async downloadAudio(url: string): Promise<string> {
+  constructor() {
+    if (!fs.existsSync(this.getLocalAudioPath())) {
+      mkdir(this.getLocalAudioPath());
+    }
+  }
+
+  public async downloadAudio(url: string): Promise<YoutubeAudio> {
     this.validateUrl(url);
 
-    return new Promise(async (resolve, reject) => {
-      const videoId = ytdl.getVideoID(url);
+    const videoId = ytdl.getVideoID(url);
+    const videoData = await ytdl.getInfo(url);
 
+    const isFileExists = fs.existsSync(this.getLocalAudioPath(videoId));
+
+    if (isFileExists) {
+      console.log(`Received ${videoId} from cache`);
+
+      return this.assignAudioData(videoData, videoId);
+    }
+
+    return new Promise(async (resolve, reject) => {
       console.log(`Started download: ${videoId}`);
       console.time(videoId);
 
-      if (!fs.existsSync(path.join(__dirname, 'audios'))) {
-        await mkdir(path.join(__dirname, 'audios'));
-      }
-
-      const pathToVideo = path.join(__dirname, 'audios', `${videoId}.mp3`);
+      const pathToVideo = this.getLocalAudioPath(videoId);
 
       ytdl(url, {
         filter: 'audioonly',
@@ -29,7 +40,7 @@ export class YoutubeService {
         .on('close', () => {
           console.timeEnd(videoId);
           console.log(`Download completed: ${videoId}`);
-          resolve(pathToVideo);
+          resolve(this.assignAudioData(videoData, videoId));
         });
     });
   }
@@ -38,5 +49,18 @@ export class YoutubeService {
     if (!ytdl.validateURL(url)) {
       throw new BadRequestException('Invalid video url');
     }
+  }
+
+  private getLocalAudioPath(fileId?: string) {
+    return path.join(__dirname, 'audios', fileId ? `${fileId}.mp3` : '');
+  }
+
+  private assignAudioData(info: ytdl.videoInfo, videoId: string): YoutubeAudio {
+    return {
+      pathTo: this.getLocalAudioPath(videoId),
+      title: info.videoDetails.title,
+      lengthSeconds: Number(info.videoDetails.lengthSeconds),
+      thumbUrl: info.videoDetails.thumbnails[0].url,
+    };
   }
 }
