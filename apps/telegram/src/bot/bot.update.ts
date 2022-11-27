@@ -7,9 +7,8 @@ import {
   Update,
   Ctx,
 } from 'nestjs-telegraf';
-import * as fs from 'fs';
+import { readFile } from 'fs/promises';
 import { Telegraf } from 'telegraf';
-import { BotService } from './bot.service';
 import { Context } from '../interfaces/context.interface';
 import { YoutubeService } from '@app/youtube';
 
@@ -18,31 +17,43 @@ export class BotUpdate {
   constructor(
     @InjectBot()
     private readonly bot: Telegraf<Context>,
-    private readonly botService: BotService,
     private readonly youtubeService: YoutubeService,
   ) {}
 
   @Start()
   async onStart(): Promise<string> {
     const me = await this.bot.telegram.getMe();
-    return `Hey, I'm ${me.first_name}`;
+    return `Hey, I'm ${me.first_name}. Please type vido url you want to download`;
   }
 
   @Help()
   async onHelp(): Promise<string> {
-    return 'Send me any text';
+    return 'Send me vido url, and I will send audio to you';
   }
 
   @On('text')
   async onMessage(
     @Message('text') text: string,
     @Ctx() ctx: Context,
-  ): Promise<string> {
-    const videoData = await this.youtubeService.downloadAudio(text);
-    await ctx.replyWithAudio({
-      source: fs.readFileSync(videoData.pathTo),
-    });
-    console.log('Here', videoData);
-    return 'Completed';
+  ): Promise<void> {
+    const startMessage = await ctx.reply("I'm started download! Please wait");
+
+    const { pathTo, title, thumbUrl, lengthSeconds } =
+      await this.youtubeService.downloadAudio(text);
+
+    await ctx.replyWithAudio(
+      {
+        source: await readFile(pathTo),
+      },
+      {
+        title,
+        duration: lengthSeconds,
+        thumb: {
+          url: thumbUrl,
+        },
+      },
+    );
+
+    await ctx.deleteMessage(startMessage.message_id);
   }
 }
